@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="畑ログ">
+<title>畑作業ログ</title>
+<style>
+:root {
+  --green: #1D9E75; --green-light: #E1F5EE; --green-dark: #0F6E56;
+  --text: #1a1a18; --text-sub: #5a5a56; --text-hint: #9a9a94;
+  --border: rgba(0,0,0,0.1); --border-med: rgba(0,0,0,0.18);
+  --bg: #F7F4EE; --surface: #ffffff;
+  --danger-bg: #fff0f0; --danger: #c0392b;
+  --yellow-bg: #fffbea; --yellow: #b07d00;
+  --radius: 14px; --radius-sm: 9px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
+header { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 14px 20px 12px; position: sticky; top: 0; z-index: 10; }
+.header-inner { display: flex; align-items: center; gap: 10px; }
+.logo { width: 34px; height: 34px; background: var(--green); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.header-text h1 { font-size: 17px; font-weight: 600; }
+.header-text p { font-size: 12px; color: var(--text-sub); margin-top: 1px; }
+.main { padding: 16px; max-width: 480px; margin: 0 auto; }
+
+.status-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 24px 16px; margin-bottom: 12px; text-align: center; transition: background 0.3s, border-color 0.3s; }
+.status-card.recording { background: var(--danger-bg); border-color: rgba(192,57,43,0.2); }
+.status-card.standby { background: var(--yellow-bg); border-color: rgba(176,125,0,0.2); }
+.status-icon { font-size: 48px; margin-bottom: 8px; line-height: 1; }
+.status-text { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.status-card.recording .status-text { color: var(--danger); }
+.status-card.standby .status-text { color: var(--yellow); }
+.status-sub { font-size: 13px; color: var(--text-sub); line-height: 1.7; }
+.rec-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--danger); animation: blink 1s ease-in-out infinite; display: inline-block; margin-right: 5px; vertical-align: middle; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* 無音カウントダウンバー */
+.silence-bar-wrap { height: 6px; background: rgba(192,57,43,0.15); border-radius: 3px; margin-top: 12px; overflow: hidden; display: none; }
+.silence-bar { height: 100%; background: var(--danger); border-radius: 3px; transition: width 1s linear; }
+
+/* 音量メーター */
+.vol-wrap { display: none; align-items: center; gap: 8px; margin-top: 10px; }
+.vol-label { font-size: 11px; color: var(--text-hint); flex-shrink: 0; }
+.vol-bar-bg { flex: 1; height: 6px; background: rgba(0,0,0,0.08); border-radius: 3px; overflow: hidden; }
+.vol-bar { height: 100%; background: var(--danger); border-radius: 3px; width: 0%; transition: width 0.1s; }
+
+.commands { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; }
+.commands-title { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 10px; }
+.command-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 0.5px solid var(--border); }
+.command-row:last-child { border-bottom: none; }
+.command-word { font-size: 14px; font-weight: 600; background: var(--bg); border-radius: 6px; padding: 4px 10px; flex-shrink: 0; }
+.command-desc { font-size: 13px; color: var(--text-sub); }
+
+.rec-btn { width: 100%; padding: 16px; border: none; border-radius: var(--radius); display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; font-weight: 600; color: white; cursor: pointer; -webkit-appearance: none; margin-bottom: 12px; transition: background 0.2s; }
+
+.card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; }
+.card-label { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 10px; }
+.memo-list { display: flex; flex-direction: column; gap: 8px; min-height: 40px; }
+.memo-item { background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px; line-height: 1.6; display: flex; gap: 8px; align-items: flex-start; }
+.memo-num { font-size: 11px; color: var(--text-hint); font-weight: 600; padding-top: 2px; flex-shrink: 0; }
+.memo-empty { font-size: 13px; color: var(--text-hint); text-align: center; padding: 10px 0; }
+
+.save-btn { width: 100%; padding: 15px; border: none; border-radius: var(--radius); background: var(--green); color: white; font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; -webkit-appearance: none; }
+.save-btn:disabled { opacity: 0.5; }
+.clear-btn { width: 100%; padding: 13px; background: var(--surface); border: 0.5px solid var(--border-med); border-radius: var(--radius); color: var(--text-sub); font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; -webkit-appearance: none; }
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.35); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.save-status { border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; font-weight: 500; margin-bottom: 12px; display: none; }
+.save-status.ok { background: var(--green-light); color: var(--green-dark); }
+.save-status.error { background: var(--danger-bg); color: var(--danger); }
+.history-section { margin-top: 24px; }
+.history-title { font-size: 13px; font-weight: 600; color: var(--text-sub); margin-bottom: 10px; }
+.history-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; }
+.history-date { font-size: 11px; color: var(--text-hint); margin-bottom: 4px; }
+.history-work { font-size: 13px; line-height: 1.5; }
+.history-empty { font-size: 13px; color: var(--text-hint); text-align: center; padding: 20px 0; }
+.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1a1a18; color: white; font-size: 13px; font-weight: 500; padding: 10px 20px; border-radius: 100px; opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; z-index: 100; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="logo">🌱</div>
+    <div class="header-text">
+      <h1>畑作業ログ</h1>
+      <p>5秒無音で自動停止、声で再開</p>
+    </div>
+  </div>
+</header>
+<div class="main">
+
+  <div class="status-card" id="statusCard">
+    <div class="status-icon" id="statusIcon">🎤</div>
+    <div class="status-text" id="statusText">準備完了</div>
+    <div class="status-sub" id="statusSub">録音開始ボタンを一度押してください<br>以降は「<strong>録音開始</strong>」の声で再開できます</div>
+    <div class="silence-bar-wrap" id="silenceBarWrap">
+      <div class="silence-bar" id="silenceBar" style="width:100%"></div>
+    </div>
+    <div class="vol-wrap" id="volWrap">
+      <span class="vol-label">音量</span>
+      <div class="vol-bar-bg"><div class="vol-bar" id="volBar"></div></div>
+    </div>
+  </div>
+
+  <div class="commands">
+    <div class="commands-title">🎙️ 音声コマンド</div>
+    <div class="command-row">
+      <span class="command-word">録音開始</span>
+      <span class="command-desc">録音を開始・再開する</span>
+    </div>
+    <div class="command-row">
+      <span class="command-word">録音停止</span>
+      <span class="command-desc">完全に停止する</span>
+    </div>
+  </div>
+
+  <button class="rec-btn" id="recBtn" onclick="handleBtn()" style="background:var(--green)">
+    <span id="recBtnIcon">⏺️</span>
+    <span id="recBtnText">録音開始（最初の1回だけタップ）</span>
+  </button>
+
+  <div class="card">
+    <div class="card-label">📝 録音したメモ（<span id="memoCount">0</span>件）</div>
+    <div class="memo-list" id="memoList">
+      <div class="memo-empty">まだメモがありません</div>
+    </div>
+  </div>
+
+  <div class="save-status" id="saveStatus"></div>
+  <button class="save-btn" id="saveBtn" onclick="processAndSave()">
+    ✨ AIで整理してスプレッドシートに保存
+  </button>
+  <button class="clear-btn" id="clearBtn" onclick="clearAll()" style="display:none">
+    🔄 次の記録へ
+  </button>
+
+  <div class="history-section">
+    <div class="history-title">最近の記録</div>
+    <div id="historyList"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxMtHZIP_WQLTsNwBd4yOmeoXy5enID80Uq-uSJH34qdWpZ98VsaV-eZTDU17EDiZk/exec';
+const SILENCE_SEC = 5;       // 無音判定秒数
+const SILENCE_THRESHOLD = 8; // 音量閾値（0-100）風や虫の音程度ならこの値で対応
+const START_KW = ['録音開始', '録音をはじめて', '再開', '録音して', '開始'];
+const STOP_KW  = ['録音停止', '停止', '止めて', '録音やめて'];
+
+var mode = 'ready'; // ready / recording / standby / stopped
+var memos = [];
+var recog = null;
+var kwRecog = null;
+var kwActive = false;
+var toastTimer;
+
+// Web Audio API
+var audioCtx = null;
+var analyser = null;
+var micStream = null;
+var silenceTimer = null;
+var silenceCountdown = SILENCE_SEC;
+var volRafId = null;
+
+window.addEventListener('load', function() { renderHistory(); });
+
+function speak(text, callback) {
+  if (!('speechSynthesis' in window)) { if (callback) callback(); return; }
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP'; u.rate = 1.1;
+  u.onend = function() { if (callback) setTimeout(callback, 150); };
+  u.onerror = function() { if (callback) setTimeout(callback, 150); };
+  window.speechSynthesis.speak(u);
+}
+
+function handleBtn() {
+  if (mode === 'ready' || mode === 'stopped') {
+    speak('録音を開始します。', function() { startRecording(); });
+  } else {
+    doStop();
+    speak('録音停止。');
+  }
+}
+
+// --- 録音開始 ---
+function startRecording() {
+  kwActive = false;
+  if (kwRecog) { try { kwRecog.abort(); } catch(e) {} kwRecog = null; }
+
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+    micStream = stream;
+    setupAudioAnalyser(stream);
+    startSpeechRecog();
+  }).catch(function(e) {
+    showToast('マイクの許可が必要です');
+  });
+}
+
+function setupAudioAnalyser(stream) {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  var src = audioCtx.createMediaStreamSource(stream);
+  src.connect(analyser);
+  startSilenceWatch();
+  startVolMeter();
+}
+
+function getVolume() {
+  if (!analyser) return 0;
+  var buf = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(buf);
+  var sum = 0;
+  for (var i = 0; i < buf.length; i++) sum += buf[i];
+  return (sum / buf.length / 255) * 100;
+}
+
+// 無音監視
+function startSilenceWatch() {
+  clearInterval(silenceTimer);
+  silenceCountdown = SILENCE_SEC;
+  updateSilenceBar();
+  silenceTimer = setInterval(function() {
+    if (mode !== 'recording') { clearInterval(silenceTimer); return; }
+    var vol = getVolume();
+    if (vol > SILENCE_THRESHOLD) {
+      // 声あり → リセット
+      silenceCountdown = SILENCE_SEC;
+    } else {
+      silenceCountdown -= 0.5;
+      if (silenceCountdown <= 0) {
+        clearInterval(silenceTimer);
+        onSilenceDetected();
+        return;
+      }
+    }
+    updateSilenceBar();
+  }, 500);
+}
+
+function updateSilenceBar() {
+  var pct = (silenceCountdown / SILENCE_SEC) * 100;
+  document.getElementById('silenceBar').style.width = pct + '%';
+}
+
+function onSilenceDetected() {
+  if (mode !== 'recording') return;
+  // 録音停止
+  if (recog) { try { recog.stop(); } catch(e) {} }
+  stopAudio();
+  mode = 'standby';
+  setUI('standby');
+  speak('録音停止。', function() {
+    if (mode === 'standby') startKwListening();
+  });
+}
+
+// 音量メーター表示
+function startVolMeter() {
+  document.getElementById('volWrap').style.display = 'flex';
+  function loop() {
+    if (mode !== 'recording') {
+      document.getElementById('volWrap').style.display = 'none';
+      document.getElementById('volBar').style.width = '0%';
+      return;
+    }
+    var v = Math.min(getVolume() * 3, 100);
+    document.getElementById('volBar').style.width = v + '%';
+    volRafId = requestAnimationFrame(loop);
+  }
+  volRafId = requestAnimationFrame(loop);
+}
+
+function stopAudio() {
+  clearInterval(silenceTimer);
+  if (volRafId) { cancelAnimationFrame(volRafId); volRafId = null; }
+  if (micStream) { micStream.getTracks().forEach(function(t) { t.stop(); }); micStream = null; }
+  document.getElementById('silenceBarWrap').style.display = 'none';
+  document.getElementById('volWrap').style.display = 'none';
+}
+
+// --- 音声認識 ---
+function startSpeechRecog() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('音声認識未対応です（Safari推奨）'); return;
+  }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recog = new SR();
+  recog.lang = 'ja-JP';
+  recog.continuous = true; // 連続認識でテキストを拾い続ける
+  recog.interimResults = false;
+
+  recog.onstart = function() {
+    mode = 'recording';
+    setUI('recording');
+  };
+
+  recog.onresult = function(e) {
+    for (var i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        var t = e.results[i][0].transcript.trim();
+        if (t) { memos.push(t); renderMemos(); }
+      }
+    }
+  };
+
+  recog.onend = function() {
+    if (mode === 'recording') {
+      // 予期しない終了 → 再起動
+      try { recog.start(); } catch(e) {}
+    }
+  };
+
+  recog.onerror = function(e) {
+    if (e.error !== 'no-speech' && mode === 'recording') {
+      setTimeout(function() {
+        if (mode === 'recording') { try { recog.start(); } catch(ex) {} }
+      }, 500);
+    }
+  };
+
+  try { recog.start(); } catch(e) {}
+}
+
+// --- キーワード待機 ---
+function startKwListening() {
+  if (mode !== 'standby') return;
+  kwActive = true;
+  runKwCycle();
+}
+
+function runKwCycle() {
+  if (!kwActive || mode !== 'standby') return;
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  kwRecog = new SR();
+  kwRecog.lang = 'ja-JP';
+  kwRecog.continuous = false;
+  kwRecog.interimResults = false;
+
+  kwRecog.onresult = function(e) {
+    var t = e.results[0][0].transcript.trim();
+    var isStart = START_KW.some(function(kw) { return t.indexOf(kw) !== -1; });
+    var isStop  = STOP_KW.some(function(kw) { return t.indexOf(kw) !== -1; });
+    if (isStop && mode === 'standby') {
+      kwActive = false;
+      doStop();
+      speak('録音停止。');
+    } else if (isStart && mode === 'standby') {
+      kwActive = false;
+      speak('録音を開始します。', function() {
+        mode = 'ready';
+        startRecording();
+      });
+    }
+  };
+
+  kwRecog.onend = function() {
+    if (kwActive && mode === 'standby') setTimeout(function() { runKwCycle(); }, 200);
+  };
+  kwRecog.onerror = function() {
+    if (kwActive && mode === 'standby') setTimeout(function() { runKwCycle(); }, 500);
+  };
+  try { kwRecog.start(); } catch(e) {
+    if (kwActive && mode === 'standby') setTimeout(function() { runKwCycle(); }, 500);
+  }
+}
+
+function doStop() {
+  kwActive = false;
+  mode = 'stopped';
+  if (recog) { try { recog.abort(); } catch(e) {} recog = null; }
+  if (kwRecog) { try { kwRecog.abort(); } catch(e) {} kwRecog = null; }
+  stopAudio();
+  setUI('ready');
+}
+
+function setUI(state) {
+  var card = document.getElementById('statusCard');
+  var icon = document.getElementById('statusIcon');
+  var text = document.getElementById('statusText');
+  var sub  = document.getElementById('statusSub');
+  var btn  = document.getElementById('recBtn');
+  var bi   = document.getElementById('recBtnIcon');
+  var bt   = document.getElementById('recBtnText');
+  var sbw  = document.getElementById('silenceBarWrap');
+
+  if (state === 'recording') {
+    card.className = 'status-card recording';
+    icon.innerHTML = '<span class="rec-dot"></span>';
+    text.textContent = '録音中…';
+    sub.textContent = '5秒無音で自動停止します';
+    btn.style.background = 'var(--danger)';
+    bi.textContent = '⏹️'; bt.textContent = '完全停止（タップ）';
+    sbw.style.display = 'block';
+  } else if (state === 'standby') {
+    card.className = 'status-card standby';
+    icon.textContent = '👂';
+    text.textContent = 'キーワード待機中';
+    sub.innerHTML = '「<strong>録音開始</strong>」→ 録音を再開<br>「<strong>録音停止</strong>」→ 完全に停止';
+    btn.style.background = 'var(--yellow)';
+    bi.textContent = '⏹️'; bt.textContent = '完全停止（タップ）';
+    sbw.style.display = 'none';
+  } else {
+    card.className = 'status-card';
+    icon.textContent = '🎤';
+    text.textContent = '準備完了';
+    sub.innerHTML = '録音開始ボタンを一度押してください<br>以降は「<strong>録音開始</strong>」「<strong>録音停止</strong>」の声で操作';
+    btn.style.background = 'var(--green)';
+    bi.textContent = '⏺️'; bt.textContent = '録音開始（最初の1回だけタップ）';
+    sbw.style.display = 'none';
+  }
+}
+
+function renderMemos() {
+  var list = document.getElementById('memoList');
+  document.getElementById('memoCount').textContent = memos.length;
+  if (!memos.length) { list.innerHTML = '<div class="memo-empty">まだメモがありません</div>'; return; }
+  list.innerHTML = memos.map(function(m, i) {
+    return '<div class="memo-item"><span class="memo-num">' + (i+1) + '</span><span>' + m + '</span></div>';
+  }).join('');
+}
+
+async function processAndSave() {
+  if (!memos.length) { showToast('メモを録音してください'); return; }
+  doStop();
+  var btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div><span>AIが整理中…</span>';
+  showSaveStatus('🤖 AIが内容を整理してスプレッドシートに保存中…', 'ok');
+  try {
+    await fetch(GAS_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memo: memos.join('。') })
+    });
+    showSaveStatus('✅ スプレッドシートに保存しました！', 'ok');
+    speak('スプレッドシートに保存しました。');
+    saveHistory({ date: new Date().toLocaleDateString('ja-JP'), work: memos.join('。').slice(0, 60) });
+    document.getElementById('clearBtn').style.display = 'flex';
+  } catch(e) {
+    showSaveStatus('❌ エラー: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✨ AIで整理してスプレッドシートに保存';
+  }
+}
+
+function showSaveStatus(msg, type) {
+  var bar = document.getElementById('saveStatus');
+  bar.textContent = msg; bar.className = 'save-status ' + type; bar.style.display = 'block';
+}
+
+function clearAll() {
+  memos = []; doStop(); renderMemos();
+  document.getElementById('saveStatus').style.display = 'none';
+  document.getElementById('clearBtn').style.display = 'none';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function saveHistory(p) {
+  var h = JSON.parse(localStorage.getItem('hatake_hist') || '[]');
+  h.unshift({ date: p.date, work: p.work, ts: Date.now() });
+  localStorage.setItem('hatake_hist', JSON.stringify(h.slice(0, 20)));
+  renderHistory();
+}
+
+function renderHistory() {
+  var h = JSON.parse(localStorage.getItem('hatake_hist') || '[]');
+  var el = document.getElementById('historyList');
+  if (!h.length) { el.innerHTML = '<div class="history-empty">まだ記録がありません</div>'; return; }
+  el.innerHTML = h.map(function(i) {
+    return '<div class="history-item"><div class="history-date">' + i.date + '</div><div class="history-work">' + i.work + '</div></div>';
+  }).join('');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2800);
+}
+</script>
+</body>
+</html>
