@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="畑ログ">
+<title>畑作業ログ</title>
+<style>
+:root {
+  --green: #1D9E75;
+  --green-light: #E1F5EE;
+  --green-dark: #0F6E56;
+  --text: #1a1a18;
+  --text-sub: #5a5a56;
+  --text-hint: #9a9a94;
+  --border: rgba(0,0,0,0.1);
+  --border-med: rgba(0,0,0,0.18);
+  --bg: #F7F4EE;
+  --surface: #ffffff;
+  --danger-bg: #fff0f0;
+  --danger: #c0392b;
+  --radius: 14px;
+  --radius-sm: 9px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 60px; }
+
+header { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 14px 20px 12px; position: sticky; top: 0; z-index: 10; }
+.header-inner { display: flex; align-items: center; gap: 10px; }
+.logo { width: 34px; height: 34px; background: var(--green); border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
+.header-text h1 { font-size: 17px; font-weight: 600; color: var(--text); }
+.header-text p { font-size: 12px; color: var(--text-sub); margin-top: 1px; }
+
+.main { padding: 16px; max-width: 480px; margin: 0 auto; }
+
+.card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; }
+.card-label { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 10px; }
+
+.memo-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; min-height: 40px; }
+.memo-item { background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 14px; color: var(--text); line-height: 1.6; display: flex; gap: 8px; align-items: flex-start; }
+.memo-item-num { font-size: 11px; color: var(--text-hint); font-weight: 600; padding-top: 2px; flex-shrink: 0; }
+.memo-empty { font-size: 13px; color: var(--text-hint); text-align: center; padding: 10px 0; }
+
+.rec-btn {
+  width: 100%; padding: 18px 16px;
+  background: var(--surface); border: 0.5px solid var(--border-med);
+  border-radius: var(--radius); display: flex; align-items: center; justify-content: center; gap: 12px;
+  font-size: 16px; font-weight: 500; color: var(--text); cursor: pointer;
+  transition: background 0.15s; -webkit-appearance: none;
+}
+.rec-btn:active { background: #f0f0eb; }
+.rec-btn.recording { background: var(--danger-bg); border-color: rgba(192,57,43,0.25); color: var(--danger); }
+.rec-icon { font-size: 26px; line-height: 1; }
+.rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); animation: blink 1s ease-in-out infinite; flex-shrink: 0; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.tip { font-size: 12px; color: var(--text-hint); margin-top: 8px; line-height: 1.6; display: flex; gap: 5px; }
+
+.save-btn {
+  width: 100%; padding: 15px; border: none; border-radius: var(--radius);
+  background: var(--green); color: white; font-size: 16px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin-bottom: 12px; -webkit-appearance: none; transition: background 0.15s;
+}
+.save-btn:active { background: var(--green-dark); }
+.save-btn:disabled { opacity: 0.5; }
+
+.clear-btn {
+  width: 100%; padding: 13px; background: var(--surface); border: 0.5px solid var(--border-med);
+  border-radius: var(--radius); color: var(--text-sub); font-size: 14px; font-weight: 500;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  -webkit-appearance: none;
+}
+.clear-btn:active { background: #f0f0eb; }
+
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.35); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.result-section { display: none; margin-bottom: 14px; }
+.result-header { font-size: 13px; color: var(--green-dark); font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+.result-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 4px 16px; margin-bottom: 10px; }
+.field-row { padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.field-row:last-child { border-bottom: none; }
+.field-label { font-size: 12px; color: var(--text-sub); font-weight: 500; margin-bottom: 3px; }
+.field-value { font-size: 14px; color: var(--text); line-height: 1.6; }
+.field-empty { color: var(--text-hint); }
+
+.status-bar { background: var(--green-light); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--green-dark); font-weight: 500; margin-bottom: 12px; display: none; align-items: center; gap: 8px; }
+.status-bar.error { background: var(--danger-bg); color: var(--danger); }
+
+.history-section { margin-top: 24px; }
+.history-title { font-size: 13px; font-weight: 600; color: var(--text-sub); margin-bottom: 10px; }
+.history-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px; }
+.history-date { font-size: 11px; color: var(--text-hint); margin-bottom: 4px; }
+.history-work { font-size: 13px; color: var(--text); line-height: 1.5; }
+.history-empty { font-size: 13px; color: var(--text-hint); text-align: center; padding: 20px 0; }
+
+.toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1a1a18; color: white; font-size: 13px; font-weight: 500; padding: 10px 20px; border-radius: 100px; opacity: 0; transition: opacity 0.2s; pointer-events: none; white-space: nowrap; z-index: 100; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">🌱</div>
+    <div class="header-text">
+      <h1>畑作業ログ</h1>
+      <p>声で記録、AIが整理してスプレッドシートに保存</p>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+
+  <div class="card">
+    <div class="card-label">🎙️ 音声メモ（作業中に何度でも録音できます）</div>
+    <div class="memo-list" id="memoList">
+      <div class="memo-empty">まだメモがありません</div>
+    </div>
+    <button class="rec-btn" id="recBtn" onclick="toggleRec()">
+      <span class="rec-icon" id="recIcon">🎤</span>
+      <span id="recText">タップして録音開始</span>
+    </button>
+    <div class="tip">
+      ℹ️ 録音→停止を繰り返して複数のメモを残せます。「トマト5本収穫」「葉に虫食い発見」など短く話してください。
+    </div>
+  </div>
+
+  <div class="status-bar" id="statusBar"></div>
+
+  <button class="save-btn" id="saveBtn" onclick="processAndSave()">
+    ✨ AIで整理してスプレッドシートに保存
+  </button>
+
+  <div class="result-section" id="resultSection">
+    <div class="result-header">✅ 整理完了・スプレッドシートに保存しました</div>
+    <div class="result-card" id="resultCard"></div>
+  </div>
+
+  <button class="clear-btn" id="clearBtn" onclick="clearAll()" style="display:none">
+    🔄 次の記録へ
+  </button>
+
+  <div class="history-section">
+    <div class="history-title">最近の記録</div>
+    <div id="historyList"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxMtHZIP_WQLTsNwBd4yOmeoXy5enID80Uq-uSJH34qdWpZ98VsaV-eZTDU17EDiZk/exec';
+const FIELDS = [
+  { key: 'date', label: '📅 日付' },
+  { key: 'weather', label: '🌤️ 天気・気温' },
+  { key: 'work', label: '🌿 作業内容' },
+  { key: 'harvest', label: '🧺 収穫' },
+  { key: 'introduced', label: '🌱 導入した作物・農材' },
+  { key: 'observation', label: '👁️ 観察・気づき' },
+  { key: 'next_action', label: '➡️ 次回の課題' },
+];
+
+let memos = [];
+let recognition = null;
+let isRecording = false;
+let toastTimer;
+
+window.addEventListener('load', function() {
+  renderHistory();
+});
+
+function toggleRec() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('音声認識未対応です（Safari推奨）');
+    return;
+  }
+  if (isRecording) {
+    recognition && recognition.stop();
+    return;
+  }
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'ja-JP';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  var btn = document.getElementById('recBtn');
+  var icon = document.getElementById('recIcon');
+  var text = document.getElementById('recText');
+
+  recognition.onstart = function() {
+    isRecording = true;
+    btn.classList.add('recording');
+    icon.textContent = '⏹️';
+    text.innerHTML = '<span style="display:flex;align-items:center;gap:8px"><span class="rec-dot"></span>録音中… タップして停止</span>';
+  };
+
+  recognition.onresult = function(e) {
+    var transcript = e.results[0][0].transcript;
+    if (transcript.trim()) {
+      memos.push(transcript.trim());
+      renderMemos();
+    }
+  };
+
+  var stopRec = function() {
+    isRecording = false;
+    btn.classList.remove('recording');
+    icon.textContent = '🎤';
+    text.textContent = 'タップして録音開始';
+  };
+
+  recognition.onend = stopRec;
+  recognition.onerror = stopRec;
+  recognition.start();
+}
+
+function renderMemos() {
+  var list = document.getElementById('memoList');
+  if (memos.length === 0) {
+    list.innerHTML = '<div class="memo-empty">まだメモがありません</div>';
+    return;
+  }
+  list.innerHTML = memos.map(function(m, i) {
+    return '<div class="memo-item"><span class="memo-item-num">' + (i + 1) + '</span><span>' + m + '</span></div>';
+  }).join('');
+}
+
+async function processAndSave() {
+  if (memos.length === 0) { showToast('メモを録音してください'); return; }
+
+  var btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div><span>AIが整理中…</span>';
+  showStatus('🤖 AIが内容を整理してスプレッドシートに保存中…');
+
+  var combinedMemo = memos.join('。');
+
+  try {
+    var resp = await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memo: combinedMemo })
+    });
+
+    showStatus('✅ スプレッドシートに保存しました！');
+    saveHistory({ date: new Date().toLocaleDateString('ja-JP'), work: combinedMemo.slice(0, 60) });
+    document.getElementById('clearBtn').style.display = 'flex';
+    showToast('保存完了！スプレッドシートを確認してください');
+
+  } catch(e) {
+    showStatus('❌ エラー: ' + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✨ AIで整理してスプレッドシートに保存';
+  }
+}
+
+function showStatus(msg, isError) {
+  var bar = document.getElementById('statusBar');
+  bar.textContent = msg;
+  bar.className = 'status-bar' + (isError ? ' error' : '');
+  bar.style.display = 'flex';
+}
+
+function clearAll() {
+  memos = [];
+  renderMemos();
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('statusBar').style.display = 'none';
+  document.getElementById('clearBtn').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function saveHistory(p) {
+  var h = JSON.parse(localStorage.getItem('hatake_hist') || '[]');
+  h.unshift({ date: p.date, work: p.work, ts: Date.now() });
+  localStorage.setItem('hatake_hist', JSON.stringify(h.slice(0, 20)));
+  renderHistory();
+}
+
+function renderHistory() {
+  var h = JSON.parse(localStorage.getItem('hatake_hist') || '[]');
+  var el = document.getElementById('historyList');
+  if (!h.length) { el.innerHTML = '<div class="history-empty">まだ記録がありません</div>'; return; }
+  el.innerHTML = h.map(function(i) {
+    return '<div class="history-item"><div class="history-date">' + i.date + '</div><div class="history-work">' + i.work + '</div></div>';
+  }).join('');
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2800);
+}
+</script>
+</body>
+</html>
